@@ -72,6 +72,7 @@ public class MockSituationsServiceImpl implements ISituationsServiceImpl {
         situation.getProperties().put("Property-1", "Property one Value"); //$NON-NLS-1$ //$NON-NLS-2$
         situation.getProperties().put("Property-2", "Property two Value"); //$NON-NLS-1$ //$NON-NLS-2$
         situation.getProperties().put("Property-3", "Property three Value"); //$NON-NLS-1$ //$NON-NLS-2$
+        situation.getProperties().put("resolutionState", "Open"); //$NON-NLS-1$ //$NON-NLS-2$
         situations.add(situation);
 
         situation = new SituationSummaryBean();
@@ -81,6 +82,7 @@ public class MockSituationsServiceImpl implements ISituationsServiceImpl {
         situation.setSubject("{urn:namespace}ServiceA|OperationB"); //$NON-NLS-1$
         situation.setTimestamp(new Date());
         situation.setDescription("Some description of the Situation goes here in this column so that it can be read by the user."); //$NON-NLS-1$
+        situation.getProperties().put("resolutionState", "Open"); //$NON-NLS-1$ //$NON-NLS-2$
         situations.add(situation);
 
         situation = new SituationSummaryBean();
@@ -92,6 +94,7 @@ public class MockSituationsServiceImpl implements ISituationsServiceImpl {
         situation.setDescription("Some description of the Situation goes here in this column so that it can be read by the user."); //$NON-NLS-1$
         situation.getProperties().put("Property-1", "Property one Value"); //$NON-NLS-1$ //$NON-NLS-2$
         situation.getProperties().put("Property-2", "Property two Value"); //$NON-NLS-1$ //$NON-NLS-2$
+        situation.getProperties().put("resolutionState", "Open"); //$NON-NLS-1$ //$NON-NLS-2$
         situations.add(situation);
 
         situation = new SituationSummaryBean();
@@ -101,6 +104,7 @@ public class MockSituationsServiceImpl implements ISituationsServiceImpl {
         situation.setSubject("{urn:namespace}SomeService|AnotherOperation"); //$NON-NLS-1$
         situation.setTimestamp(new Date());
         situation.setDescription("Some description of the Situation goes here in this column so that it can be read by the user."); //$NON-NLS-1$
+        situation.getProperties().put("resolutionState", "Open"); //$NON-NLS-1$ //$NON-NLS-2$
         situations.add(situation);
         
         sort(situations, sortColumn, ascending);
@@ -163,6 +167,7 @@ public class MockSituationsServiceImpl implements ISituationsServiceImpl {
         situation.getProperties().put("Property-1", "Property one Value"); //$NON-NLS-1$ //$NON-NLS-2$
         situation.getProperties().put("Property-2", "Property two Value"); //$NON-NLS-1$ //$NON-NLS-2$
         situation.getProperties().put("Property-3", "Property three Value"); //$NON-NLS-1$ //$NON-NLS-2$
+        situation.getProperties().put("resolutionState", "Open"); //$NON-NLS-1$ //$NON-NLS-2$
         situation.getContext().put("Context-1", "This is the value of the context 1 property."); //$NON-NLS-1$ //$NON-NLS-2$
         situation.getContext().put("Context-2", "This is the value of the context 2 property."); //$NON-NLS-1$ //$NON-NLS-2$
 
