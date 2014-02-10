@@ -147,7 +147,7 @@ public class SituationSummaryBean {
 	 * @return the resolutionState
 	 */
 	public String getResolutionState() {
-		return properties != null ? properties.get("resolutionState") : null;
+		return properties != null ? properties.get("resolutionState") : ResolutionState.OPEN.toString();
 	}
 
 	/**
