@@ -21,10 +21,13 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.naming.InitialContext;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.persistence.Query;
+import javax.transaction.Status;
+import javax.transaction.UserTransaction;
 
 import org.overlord.rtgov.activity.model.ActivityType;
 import org.overlord.rtgov.activity.model.ActivityTypeId;
@@ -316,48 +319,80 @@ public class RTGovRepository {
     	}
     }
 
-	public void assignSituation(String situationId, String userName) {
+	public void assignSituation(final String situationId, final String userName) {
 		if (LOG.isLoggable(Level.FINEST)) {
-            LOG.finest(i18n.format("RTGovRepository.AssSit", situationId)); //$NON-NLS-1$
-        }
-        EntityManager em=getEntityManager();
-        try {
-        	Situation situation = em.find(Situation.class, situationId);
-            situation.getProperties().put(ASSIGNED_TO_PROPERTY, userName);
-        } finally {
-            closeEntityManager(em);
-        }
-	}
-
-	public void closeSituation(String situationId) {
-		if (LOG.isLoggable(Level.FINEST)) {
-            LOG.finest(i18n.format("RTGovRepository.DeassSit", situationId)); //$NON-NLS-1$
-        }
-        EntityManager em=getEntityManager();
-        try {
-        	Situation situation = em.find(Situation.class, situationId);
-            Map<String, String> properties = situation.getProperties();
-			properties.remove(ASSIGNED_TO_PROPERTY);
-			// remove current state if not already resolved
-			String resolutionState = properties.get(RESOLUTION_STATE_PROPERTY);
-			if (resolutionState != null && RESOLVED != ResolutionState.valueOf(resolutionState)) {
-				properties.remove(RESOLUTION_STATE_PROPERTY);
+			LOG.finest(i18n.format("RTGovRepository.AssSit", situationId)); //$NON-NLS-1$
+		}
+		new TransactionTemplate() {
+			@Override
+			public void doInTransaction(EntityManager entityManager) {
+				Situation situation = entityManager.find(Situation.class, situationId);
+				situation.getProperties().put(ASSIGNED_TO_PROPERTY, userName);
 			}
-        } finally {
-            closeEntityManager(em);
-        }
+		}.execute();
 	}
 
-	public void updateResolutionState(String situationId, ResolutionState resolutionState) {
+	public void closeSituation(final String situationId) {
 		if (LOG.isLoggable(Level.FINEST)) {
-            LOG.finest(i18n.format("RTGovRepository.UpdRState", situationId)); //$NON-NLS-1$
-        }
-        EntityManager em=getEntityManager();
-        try {
-        	Situation situation = em.find(Situation.class, situationId);
-            situation.getProperties().put(RESOLUTION_STATE_PROPERTY,resolutionState.name());
-        } finally {
-            closeEntityManager(em);
-        }
+			LOG.finest(i18n.format("RTGovRepository.DeassSit", situationId)); //$NON-NLS-1$
+		}
+		new TransactionTemplate() {
+			@Override
+			public void doInTransaction(EntityManager entityManager) {
+				Situation situation = entityManager.find(Situation.class, situationId);
+				Map<String, String> properties = situation.getProperties();
+				properties.remove(ASSIGNED_TO_PROPERTY);
+				// remove current state if not already resolved
+				String resolutionState = properties.get(RESOLUTION_STATE_PROPERTY);
+				if (resolutionState != null && RESOLVED != ResolutionState.valueOf(resolutionState)) {
+					properties.remove(RESOLUTION_STATE_PROPERTY);
+				}
+			}
+		}.execute();
+	}
+
+	public void updateResolutionState(final String situationId, final ResolutionState resolutionState) {
+		if (LOG.isLoggable(Level.FINEST)) {
+			LOG.finest(i18n.format("RTGovRepository.UpdRState", situationId)); //$NON-NLS-1$
+		}
+		new TransactionTemplate() {
+			@Override
+			public void doInTransaction(EntityManager entityManager) {
+				Situation situation = entityManager.find(Situation.class, situationId);
+				situation.getProperties().put(RESOLUTION_STATE_PROPERTY, resolutionState.name());
+			}
+		}.execute();
+	}
+	
+	private abstract class TransactionTemplate {
+		private static final String USER_TRANSACTION = "java:comp/UserTransaction";
+
+		public void execute() {
+			EntityManager entityManager = getEntityManager();
+			UserTransaction userTransaction = null;
+			try {
+				userTransaction = (UserTransaction) new InitialContext().lookup(USER_TRANSACTION);
+				if (userTransaction.getStatus() != Status.STATUS_ACTIVE) {
+					userTransaction.begin();
+					entityManager.joinTransaction();
+				}
+				doInTransaction(entityManager);
+				if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
+					userTransaction.commit();
+				}
+			} catch (Exception exception) {
+				try {
+					if (userTransaction != null && userTransaction.getStatus() == Status.STATUS_ACTIVE) {
+						userTransaction.rollback();
+					}
+				} catch (Exception rollbackException) {
+					rollbackException.printStackTrace();
+				}
+			} finally {
+				closeEntityManager(entityManager);
+			}
+		}
+
+		public abstract void doInTransaction(EntityManager entityManager);
 	}
 }

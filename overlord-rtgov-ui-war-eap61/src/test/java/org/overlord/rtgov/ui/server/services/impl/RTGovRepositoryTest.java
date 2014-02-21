@@ -9,6 +9,8 @@ import static org.overlord.rtgov.ui.server.services.impl.RTGovRepository.RESOLUT
 import java.util.Map;
 
 import javax.inject.Inject;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.persistence.Cache;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -17,6 +19,13 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.PersistenceUnitUtil;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.metamodel.Metamodel;
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.Status;
+import javax.transaction.SystemException;
+import javax.transaction.UserTransaction;
 
 import junit.framework.Assert;
 
@@ -32,14 +41,15 @@ import org.springframework.test.context.junit4.AbstractTransactionalJUnit4Spring
 @ContextConfiguration
 public class RTGovRepositoryTest extends AbstractTransactionalJUnit4SpringContextTests {
 
-    RTGovRepository rtGovRepository;
+    private static final String USER_TRANSACTION = "java:comp/UserTransaction";
+	RTGovRepository rtGovRepository;
     @PersistenceContext
     EntityManager entityManager;
     @Inject
     EntityManagerFactory entityManagerFactory;
 
     @Before
-    public void init() {
+    public void init() throws NamingException {
         this.rtGovRepository = new RTGovRepository(new EntityManagerFactoryDelegate(this.entityManagerFactory) {
             @Override
             public EntityManager createEntityManager() {
@@ -51,6 +61,36 @@ public class RTGovRepositoryTest extends AbstractTransactionalJUnit4SpringContex
                 return entityManager;
             }
         });
+        InitialContext initialContext = new InitialContext();
+		initialContext.rebind(USER_TRANSACTION, new UserTransaction() {
+			
+			@Override
+			public void setTransactionTimeout(int arg0) throws SystemException {
+			}
+			
+			@Override
+			public void setRollbackOnly() throws IllegalStateException, SystemException {
+			}
+			
+			@Override
+			public void rollback() throws IllegalStateException, SecurityException, SystemException {
+			}
+			
+			@Override
+			public int getStatus() throws SystemException {
+				return Status.STATUS_ACTIVE;
+			}
+			
+			@Override
+			public void commit() throws HeuristicMixedException, HeuristicRollbackException, IllegalStateException,
+					RollbackException, SecurityException, SystemException {
+				
+			}
+			
+			@Override
+			public void begin() throws NotSupportedException, SystemException {
+			}
+		});
     }
 
     @Test
