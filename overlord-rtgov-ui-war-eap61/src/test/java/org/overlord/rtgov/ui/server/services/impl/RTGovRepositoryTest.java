@@ -116,12 +116,12 @@ public class RTGovRepositoryTest extends AbstractTransactionalJUnit4SpringContex
         Situation openSituation = new Situation();
         openSituation.setId("openSituation");
         openSituation.setTimestamp(System.currentTimeMillis());
-        openSituation.getProperties().put("resolutionState", "Open");
+        openSituation.getProperties().put("resolutionState", ResolutionState.REOPENED.name());
         entityManager.persist(openSituation);
         Situation closedSituation = new Situation();
         closedSituation.setId("closedSituation");
         closedSituation.setTimestamp(System.currentTimeMillis());
-        closedSituation.getProperties().put("resolutionState", "Closed");
+        closedSituation.getProperties().put("resolutionState", ResolutionState.RESOLVED.name());
         entityManager.persist(closedSituation);
 
         SituationsResult situations = findSituationsByFilterBean(openSituation);
@@ -130,6 +130,20 @@ public class RTGovRepositoryTest extends AbstractTransactionalJUnit4SpringContex
         Assert.assertEquals(openSituation, situations.getSituations().get(0));
     }
     
+    @Test
+    public void getSituationsByUnresolvedResolutionState() throws Exception {
+        Situation unresolvedSituation = new Situation();
+        unresolvedSituation.setId("unresolvedSituation");
+        unresolvedSituation.setTimestamp(System.currentTimeMillis());
+        entityManager.persist(unresolvedSituation);
+        SituationsFilterBean situationsFilterBean = new SituationsFilterBean();
+        situationsFilterBean.setResolutionState(ResolutionState.UNRESOLVED.name());
+        SituationsResult situations = rtGovRepository.getSituations(situationsFilterBean, 1, 50, null, true);
+        Assert.assertNotNull(situations);
+        Assert.assertTrue(1 == situations.getTotalCount());
+        Assert.assertEquals(unresolvedSituation, situations.getSituations().get(0));
+    }
+
 	@Test
 	public void assignSituation() throws Exception {
 		Situation situation = new Situation();

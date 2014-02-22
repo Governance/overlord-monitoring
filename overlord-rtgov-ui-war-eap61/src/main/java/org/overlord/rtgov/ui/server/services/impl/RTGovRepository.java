@@ -43,7 +43,7 @@ import org.overlord.rtgov.ui.server.i18n.Messages;
  *
  */
 public class RTGovRepository {
-
+	private static final String USER_TRANSACTION = "java:comp/UserTransaction";
 	public static final String RESOLUTION_STATE_PROPERTY = "resolutionState";
 	public static final String ASSIGNED_TO_PROPERTY = "assignedTo";
 	private static final int MILLISECONDS_PER_DAY = 86400000;
@@ -169,8 +169,11 @@ public class RTGovRepository {
                 if (queryString.length() > 0) {
                     queryString.append("AND "); //$NON-NLS-1$
                 }
-                queryString.append("key(sit.properties) = 'resolutionState' and value(sit.properties)='"
-                        + filter.getResolutionState() + "'");
+				if (ResolutionState.UNRESOLVED == ResolutionState.valueOf(filter.getResolutionState())) {
+					queryString.append("'resolutionState' not in indices(sit.properties)");
+				} else {
+					queryString.append("sit.properties['resolutionState']='" + filter.getResolutionState() + "'");
+				}
             }
 
         	if (queryString.length() > 0) {
@@ -323,22 +326,22 @@ public class RTGovRepository {
 		if (LOG.isLoggable(Level.FINEST)) {
 			LOG.finest(i18n.format("RTGovRepository.AssSit", situationId)); //$NON-NLS-1$
 		}
-		new TransactionTemplate() {
+		doInTransaction(new EntityManagerCallback.Void() {
 			@Override
-			public void doInTransaction(EntityManager entityManager) {
+			public void doExecute(EntityManager entityManager) {
 				Situation situation = entityManager.find(Situation.class, situationId);
 				situation.getProperties().put(ASSIGNED_TO_PROPERTY, userName);
 			}
-		}.execute();
+		});
 	}
 
 	public void closeSituation(final String situationId) {
 		if (LOG.isLoggable(Level.FINEST)) {
 			LOG.finest(i18n.format("RTGovRepository.DeassSit", situationId)); //$NON-NLS-1$
 		}
-		new TransactionTemplate() {
+		doInTransaction(new EntityManagerCallback.Void() {
 			@Override
-			public void doInTransaction(EntityManager entityManager) {
+			public void doExecute(EntityManager entityManager) {
 				Situation situation = entityManager.find(Situation.class, situationId);
 				Map<String, String> properties = situation.getProperties();
 				properties.remove(ASSIGNED_TO_PROPERTY);
@@ -348,51 +351,49 @@ public class RTGovRepository {
 					properties.remove(RESOLUTION_STATE_PROPERTY);
 				}
 			}
-		}.execute();
+		});
 	}
 
 	public void updateResolutionState(final String situationId, final ResolutionState resolutionState) {
 		if (LOG.isLoggable(Level.FINEST)) {
 			LOG.finest(i18n.format("RTGovRepository.UpdRState", situationId)); //$NON-NLS-1$
 		}
-		new TransactionTemplate() {
+		doInTransaction(new EntityManagerCallback.Void() {
 			@Override
-			public void doInTransaction(EntityManager entityManager) {
+			public void doExecute(EntityManager entityManager) {
 				Situation situation = entityManager.find(Situation.class, situationId);
 				situation.getProperties().put(RESOLUTION_STATE_PROPERTY, resolutionState.name());
 			}
-		}.execute();
+		});
 	}
 	
-	private abstract class TransactionTemplate {
-		private static final String USER_TRANSACTION = "java:comp/UserTransaction";
-
-		public void execute() {
-			EntityManager entityManager = getEntityManager();
-			UserTransaction userTransaction = null;
-			try {
-				userTransaction = (UserTransaction) new InitialContext().lookup(USER_TRANSACTION);
-				if (userTransaction.getStatus() != Status.STATUS_ACTIVE) {
-					userTransaction.begin();
-					entityManager.joinTransaction();
-				}
-				doInTransaction(entityManager);
-				if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
-					userTransaction.commit();
-				}
-			} catch (Exception exception) {
-				try {
-					if (userTransaction != null && userTransaction.getStatus() == Status.STATUS_ACTIVE) {
-						userTransaction.rollback();
-					}
-				} catch (Exception rollbackException) {
-					rollbackException.printStackTrace();
-				}
-			} finally {
-				closeEntityManager(entityManager);
+	private <T> T doInTransaction(EntityManagerCallback<T> callback) {
+		EntityManager entityManager = getEntityManager();
+		UserTransaction userTransaction = null;
+		T result = null;
+		try {
+			userTransaction = (UserTransaction) new InitialContext().lookup(USER_TRANSACTION);
+			boolean handleTransaction = userTransaction.getStatus() != Status.STATUS_ACTIVE;
+			if (handleTransaction) {
+				userTransaction.begin();
+				entityManager.joinTransaction();
 			}
+			result = callback.execute(entityManager);
+			if (handleTransaction) {
+				userTransaction.commit();
+			}
+		} catch (Exception exception) {
+			try {
+				if (userTransaction != null && userTransaction.getStatus() == Status.STATUS_ACTIVE) {
+					userTransaction.rollback();
+				}
+			} catch (Exception rollbackException) {
+				rollbackException.printStackTrace();
+			}
+		} finally {
+			closeEntityManager(entityManager);
 		}
-
-		public abstract void doInTransaction(EntityManager entityManager);
+		return result;
 	}
+
 }
