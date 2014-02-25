@@ -15,6 +15,7 @@
  */
 package org.overlord.rtgov.ui.server.services.impl;
 
+import static java.lang.System.currentTimeMillis;
 import static org.overlord.rtgov.ui.client.model.ResolutionState.RESOLVED;
 
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ import org.overlord.rtgov.ui.client.model.SituationSummaryBean;
 import org.overlord.rtgov.ui.client.model.SituationsFilterBean;
 import org.overlord.rtgov.ui.client.model.TraceNodeBean;
 import org.overlord.rtgov.ui.client.model.UiException;
+import org.overlord.rtgov.ui.server.interceptors.IUserContext;
 import org.overlord.rtgov.ui.server.services.ISituationsServiceImpl;
 
 /**
@@ -286,6 +288,13 @@ public class MockSituationsServiceImpl implements ISituationsServiceImpl {
         // Do nothing!
         System.out.println("Resubmitted message for situation: " + situationId); //$NON-NLS-1$
         System.out.println(message);
+        SituationSummaryBean situationSummaryBean = idToSituation.get(situationId);
+        if (IUserContext.Holder.getUserPrincipal() != null) {
+            situationSummaryBean.getProperties()
+                    .put("resubmitBy", IUserContext.Holder.getUserPrincipal().getName());
+        }
+        situationSummaryBean.getProperties().put("resubmitAt", Long.toString(currentTimeMillis()));
+        situationSummaryBean.getProperties().put("resubmitResult", "OK");
     }
     
     @Override
