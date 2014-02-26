@@ -15,12 +15,17 @@
  */
 package org.overlord.rtgov.ui.client.model;
 
+import static com.google.gwt.i18n.shared.DateTimeFormat.PredefinedFormat.DATE_TIME_FULL;
+
 import java.io.Serializable;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.jboss.errai.common.client.api.annotations.Portable;
 import org.jboss.errai.databinding.client.api.Bindable;
+
+import com.google.gwt.i18n.shared.DateTimeFormat;
 
 /**
  * Models the full details of a situation.
@@ -31,13 +36,12 @@ import org.jboss.errai.databinding.client.api.Bindable;
 @Bindable
 public class SituationBean extends SituationSummaryBean implements Serializable {
 
-    private static final long serialVersionUID = SituationBean.class.hashCode();
+	private static final long serialVersionUID = SituationBean.class.hashCode();
 
     private Map<String, String> context = new HashMap<String, String>();
     private MessageBean message;
     private CallTraceBean callTrace;
     private boolean isAssignedToCurrentUser;
-
 	private boolean isTakeoverPossible;
 
     /**
@@ -113,6 +117,27 @@ public class SituationBean extends SituationSummaryBean implements Serializable 
 
 	public boolean isTakeoverPossible() {
 		return isTakeoverPossible;
+	}
+
+	public String getResubmitBy() {
+		return getProperties().get("resubmitBy");
+	}
+
+	public String getResubmitAt() {
+		if (!getProperties().containsKey("resubmitAt")) {
+			return null;
+		}
+		Date date = new Date(Long.valueOf(getProperties().get("resubmitAt")));
+		return DateTimeFormat.getFormat(DATE_TIME_FULL).format(
+				date);
+	}
+
+	public String getResubmitResult() {
+		return getProperties().get("resubmitFailure");
+	}
+
+	public boolean isResubmitError() {
+		return getProperties().containsKey("resubmitFailure");
 	}
 
 }
