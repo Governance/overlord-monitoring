@@ -17,6 +17,7 @@ package org.overlord.rtgov.ui.client.local.services.rpc;
 
 import javax.inject.Inject;
 
+import org.jboss.errai.bus.server.annotations.Remote;
 import org.overlord.rtgov.ui.client.local.services.NotificationService;
 
 
@@ -39,6 +40,127 @@ public interface IRpcServiceInvocationHandler<T> {
      */
     public void onError(Throwable error);
     
+    /**
+     * The result of IRpcServiceInvocationHandler call's.
+     */
+    interface RpcResult<T> {
+
+        /**
+         * 
+         * @return the Data of the Rpc Call or null in case of
+         *         {@link #isError()}
+         */
+        T getData();
+
+        /**
+         * 
+         * @return the Error of the Rpc Call or null if successful
+         */
+        Throwable getError();
+
+        /**
+         * 
+         * @return true in case of any Error
+         */
+        boolean isError();
+
+        /**
+         * The default implementation for RPC Result's.
+         * 
+         * @param <T>
+         *            The expected Data Type.
+         */
+        class DefaultResult<T> implements RpcResult<T> {
+            private T data;
+            private Throwable error;
+
+            public DefaultResult(T data, Throwable error) {
+                super();
+                this.data = data;
+                this.error = error;
+            }
+
+            @Override
+            public T getData() {
+                return data;
+            }
+
+            @Override
+            public Throwable getError() {
+                return error;
+            }
+
+            @Override
+            public boolean isError() {
+                return getError() != null;
+            }
+        }
+    }
+
+    /**
+     * 
+     * Convenience {@link IRpcServiceInvocationHandler Adapter} implementation
+     * providing empty stubs for {@link #onReturn(Object)},
+     * {@link #onError(Throwable)} and {@link #doOnComplete(RpcResult)} for a
+     * consolidated response handling of success and error cases.
+     * 
+     * @param <T>
+     */
+    class RpcServiceInvocationHandlerAdapter<T> implements IRpcServiceInvocationHandler<T> {
+
+        @Override
+        public void onReturn(T data) {
+            try {
+                doOnReturn(data);
+            } finally {
+                doOnComplete(new RpcResult.DefaultResult<T>(data, null));
+            }
+        }
+
+        /**
+         * Empty stub implementation of
+         * {@link IRpcServiceInvocationHandler#onReturn(Object)}
+         * 
+         * @param data
+         */
+        public void doOnReturn(T data) {
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            try {
+                doOnError(error);
+            } finally {
+                doOnComplete(new RpcResult.DefaultResult<T>(null, error));
+            }
+        }
+
+        /**
+         * Empty stub implementation of
+         * {@link IRpcServiceInvocationHandler#onError(Throwable)}
+         * 
+         * @param error
+         */
+        public void doOnError(Throwable error) {
+        }
+
+        /**
+         * Called when the RPC call complete's.
+         * 
+         * @param result
+         *            The result of the RPC Call
+         */
+        public void doOnComplete(RpcResult<T> result) {
+        }
+
+    }
+
+    /**
+     * Convenience implementation of {@link IRpcServiceInvocationHandler} for
+     * {@link Remote} method invocation's without the requirement of return
+     * (reponse) type handling.
+     * 
+     */
 	class VoidInvocationHandler implements IRpcServiceInvocationHandler<Void> {
 		@Inject
 		private NotificationService notificationService;
