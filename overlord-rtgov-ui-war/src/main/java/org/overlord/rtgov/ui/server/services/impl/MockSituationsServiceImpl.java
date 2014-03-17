@@ -238,6 +238,7 @@ public class MockSituationsServiceImpl implements ISituationsServiceImpl {
 
 		CallTraceBean callTrace = createMockCallTrace();
 		situation.setCallTrace(callTrace);
+		situation.setResubmitPossible(situation.getSubject().contains("OperationB"));
 		return situation;
     }
 
