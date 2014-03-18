@@ -62,6 +62,7 @@ import org.overlord.rtgov.ui.provider.SituationEventListener;
 import org.overlord.rtgov.ui.provider.SituationsProvider;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 
 /**
@@ -647,10 +648,13 @@ public class RTGovSituationsProvider implements SituationsProvider, ActiveChange
     }
     
     private static ServiceOperationName getServiceOperationName(Situation situation) throws UiException {
-        String parts[]=situation.getSubject().split("\\x7C");
+        if (situation == null) {
+            throw new IllegalArgumentException("parameter 'situation' must not be null");
+        }
+        String parts[] = Strings.nullToEmpty(situation.getSubject()).split("\\x7C");
         if (parts.length < 2 || parts.length > 3) {
-            throw new UiException(i18n.format("RTGovSituationsProvider.InvalidSubject", situation.getSubject(),
-                                        parts.length));
+            throw new UiException(i18n.format("RTGovSituationsProvider.InvalidSubject",
+                    situation.getSubject(), parts.length));
         }
         return new ServiceOperationName(parts[0], parts[1]);
     }
