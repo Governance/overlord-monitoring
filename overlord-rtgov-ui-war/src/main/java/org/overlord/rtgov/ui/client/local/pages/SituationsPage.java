@@ -32,6 +32,7 @@ import org.overlord.commons.gwt.client.local.widgets.HtmlSnippet;
 import org.overlord.commons.gwt.client.local.widgets.Pager;
 import org.overlord.rtgov.ui.client.local.ClientMessages;
 import org.overlord.rtgov.ui.client.local.events.TableSortEvent;
+import org.overlord.rtgov.ui.client.local.pages.situations.SituationActions;
 import org.overlord.rtgov.ui.client.local.pages.situations.SituationFilters;
 import org.overlord.rtgov.ui.client.local.pages.situations.SituationTable;
 import org.overlord.rtgov.ui.client.local.pages.situations.SituationWatcherEvents;
@@ -79,6 +80,8 @@ public class SituationsPage extends AbstractPage {
 
     @Inject @DataField("filter-sidebar")
     protected SituationFilters filtersPanel;
+    @Inject @DataField("action-sidebar")
+    protected SituationActions actionPanel;
 
     @Inject @DataField("btn-refresh")
     protected Button refreshButton;
