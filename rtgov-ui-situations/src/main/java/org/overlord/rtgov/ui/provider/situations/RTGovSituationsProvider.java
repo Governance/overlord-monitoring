@@ -525,10 +525,11 @@ public class RTGovSituationsProvider implements SituationsProvider, ActiveChange
             MessageBean message = getMessage(situation);
             if (message == null) {
                 ignoredCount++;
+                continue;
             }
             try {
-                resubmitInternal(situation, message);
                 processedCount++;
+                resubmitInternal(situation, message);
             } catch (UiException uiException) {
                 failedCount++;
             }

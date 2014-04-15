@@ -42,7 +42,6 @@ import com.google.gwt.user.client.ui.TextBox;
  * @author eric.wittmann@redhat.com
  */
 @Templated("/org/overlord/rtgov/ui/client/local/site/situations.html#filter-sidebar")
-@SessionScoped
 public class SituationFilters extends Composite implements HasValueChangeHandlers<SituationsFilterBean> {
 
     private SituationsFilterBean currentState = new SituationsFilterBean();
