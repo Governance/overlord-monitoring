@@ -97,7 +97,7 @@
 	<module>situation-store-jpa</module>
 	<module>overlord-rtgov-ui-war</module>
 	<module>overlord-rtgov-ui-dev-server</module>
-	<module>overlord-rtgov-ui-war-eap61</module>
+	<module>overlord-rtgov-ui-war-eap6</module>
 	<module>overlord-rtgov-ui-war-jetty8</module>
 	<module>overlord-rtgov-ui-war-fuse6</module>
 	<module>tests</module>
