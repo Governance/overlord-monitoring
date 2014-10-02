@@ -18,6 +18,8 @@ package org.overlord.rtgov.ui.provider.situations;
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.tryFind;
 
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -537,6 +539,31 @@ public class RTGovSituationsProvider implements SituationsProvider, ActiveChange
         return new BatchRetryResult(processedCount, failedCount, ignoredCount);
     }
     
+
+    @Override
+    public void export(SituationsFilterBean situationsFilterBean, OutputStream outputStream) {
+        List<Situation> situationIdToactivityTypeIds = _situationStore
+                .getSituations(createQuery(situationsFilterBean));
+        PrintWriter printWriter = new PrintWriter(outputStream);
+        try {
+            for (Situation situation : situationIdToactivityTypeIds) {
+                MessageBean message = getMessage(situation);
+                if (message == null) {
+                    continue;
+                }
+                printWriter.println(message.getContent());
+
+            }
+        } catch (UiException uiException) {
+            Throwables.propagate(uiException);
+        } finally {
+            if (null != printWriter) {
+                printWriter.close();
+            }
+        }
+
+    }
+
 	/**
 	 * {@inheritDoc}
 	 */
