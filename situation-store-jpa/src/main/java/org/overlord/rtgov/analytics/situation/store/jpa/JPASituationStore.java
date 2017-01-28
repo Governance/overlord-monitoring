@@ -18,23 +18,21 @@ package org.overlord.rtgov.analytics.situation.store.jpa;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.System.currentTimeMillis;
 
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.naming.InitialContext;
-import javax.annotation.Resource;
 import javax.inject.Singleton;
 import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
-import javax.transaction.Status;
-import javax.transaction.UserTransaction;
 
 import org.overlord.rtgov.analytics.situation.Situation;
-import org.overlord.rtgov.ui.client.model.ResolutionState;
 import org.overlord.rtgov.analytics.situation.store.SituationStore;
 import org.overlord.rtgov.analytics.situation.store.SituationsQuery;
+import org.overlord.rtgov.jpa.JpaStore;
+import org.overlord.rtgov.jpa.JpaStore.JpaWork;
+import org.overlord.rtgov.ui.client.model.ResolutionState;
 import org.overlord.rtgov.ui.provider.situations.Messages;
 import org.overlord.rtgov.ui.server.interceptors.IUserContext;
 
@@ -48,76 +46,35 @@ import com.google.common.base.Strings;
 public class JPASituationStore implements SituationStore {
 
     private static final int PROPERTY_VALUE_MAX_LENGTH = 250;
-    private static final String USER_TRANSACTION = "java:comp/UserTransaction"; //$NON-NLS-1$
 	private static final String OVERLORD_RTGOV_DB = "overlord-rtgov-situations"; //$NON-NLS-1$
 	
     private static volatile Messages i18n = new Messages();
 
-    @Resource
-    private UserTransaction _transaction;
-
-    @PersistenceContext(unitName=OVERLORD_RTGOV_DB)
-    private EntityManager _entityManager;
-
     private static final Logger LOG=Logger.getLogger(JPASituationStore.class.getName());
+    
+    private static final String JNDI_PROPERTY = "JPASituationStore.jndi.datasource";
+	
+	private JpaStore _jpaStore = new JpaStore(OVERLORD_RTGOV_DB, JNDI_PROPERTY);
+    
+    protected void setJpaStore(JpaStore jpaStore) {
+    	_jpaStore = jpaStore;
+    }
 
 	/**
-     * The situation repository constructor.
-     */
-    public JPASituationStore() {
-    }
-    
-    /**
-     * This method sets a transaction.
-     * 
-     * @param txn The transaction
-     */
-    protected void setUserTransaction(UserTransaction txn) {
-    	_transaction = txn;
-    }
-
-    /**
-     * This method returns a transaction.
-     *
-     * @return The transaction
-     */
-    protected UserTransaction getTransaction() throws Exception {
-        return (_transaction != null ? _transaction :
-        			(UserTransaction)new InitialContext().lookup(USER_TRANSACTION));
-    }
-
-    /**
-     * This method sets an entity manager. This can be used
-     * for testing purposes.
-     * 
-     * @param em The entity manager
-     */
-    protected void setEntityManager(EntityManager em) {
-    	_entityManager = em;
-    }
-
-    /**
-     * This method returns an entity manager.
-     *
-     * @return The entity manager
-     */
-    protected EntityManager getEntityManager() {
-        return (_entityManager);
-    }
-
-    /**
      * {@inheritDoc}
      */
-    public Situation getSituation(String id) {
+    public Situation getSituation(final String id) {
         if (LOG.isLoggable(Level.FINEST)) {
             LOG.finest(i18n.format("JPASituationStore.GetSit", id)); //$NON-NLS-1$
         }
 
-        EntityManager em=getEntityManager();
-
-        Situation ret=(Situation)em.createQuery("SELECT sit FROM Situation sit " //$NON-NLS-1$
-                                +"WHERE sit.id = '"+id+"'") //$NON-NLS-1$ //$NON-NLS-2$
-                                .getSingleResult();
+        Situation ret = _jpaStore.withJpa(new JpaWork<Situation>() {
+			public Situation perform(EntityManager em) {
+				return (Situation)em.createQuery("SELECT sit FROM Situation sit " //$NON-NLS-1$
+                        +"WHERE sit.id = '"+id+"'") //$NON-NLS-1$ //$NON-NLS-2$
+                        .getSingleResult();
+			}
+		});
 
         if (LOG.isLoggable(Level.FINEST)) {
             LOG.finest(i18n.format("JPASituationStore.Result", ret)); //$NON-NLS-1$
@@ -130,12 +87,9 @@ public class JPASituationStore implements SituationStore {
      * {@inheritDoc}
      */
     @SuppressWarnings("unchecked")
-    public java.util.List<Situation> getSituations(SituationsQuery sitQuery) {
-    	java.util.List<Situation> situations=null;
-        EntityManager em=getEntityManager();
-
+    public java.util.List<Situation> getSituations(final SituationsQuery sitQuery) {
     	// Build the query string
-    	StringBuffer queryString=new StringBuffer();
+    	final StringBuffer queryString=new StringBuffer();
 
     	if (sitQuery.getSeverity() != null) {
     		queryString.append("sit.severity = :severity "); //$NON-NLS-1$
@@ -202,13 +156,15 @@ public class JPASituationStore implements SituationStore {
 
     	queryString.insert(0, "SELECT sit from Situation sit "); //$NON-NLS-1$
     	
-    	Query query=em.createQuery(queryString.toString());
-
-    	if (sitQuery.getSeverity() != null) {
-    		query.setParameter("severity", sitQuery.getSeverity()); //$NON-NLS-1$
-    	}
-
-        situations = query.getResultList();
+    	List<Situation> situations = _jpaStore.withJpa(new JpaWork<List<Situation>>() {
+			public List<Situation> perform(EntityManager em) {
+				Query query=em.createQuery(queryString.toString());
+		    	if (sitQuery.getSeverity() != null) {
+		    		query.setParameter("severity", sitQuery.getSeverity()); //$NON-NLS-1$
+		    	}
+				return query.getResultList();
+			}
+		});
         
         if (LOG.isLoggable(Level.FINEST)) {
             LOG.finest(i18n.format("JPASituationStore.SitResult", situations)); //$NON-NLS-1$
@@ -221,11 +177,11 @@ public class JPASituationStore implements SituationStore {
 		if (LOG.isLoggable(Level.FINEST)) {
 			LOG.finest(i18n.format("JPASituationStore.AssSit", situationId)); //$NON-NLS-1$
 		}
-		doInTransaction(new EntityManagerCallback.Void() {
-			@Override
-			public void doExecute(EntityManager entityManager) {
-				Situation situation = entityManager.find(Situation.class, situationId);
+		_jpaStore.withJpa(new JpaWork<Void>() {
+			public Void perform(EntityManager em) {
+				Situation situation = em.find(Situation.class, situationId);
 				situation.getProperties().put(ASSIGNED_TO_PROPERTY, userName);
+				return null;
 			}
 		});
 	}
@@ -234,10 +190,9 @@ public class JPASituationStore implements SituationStore {
 		if (LOG.isLoggable(Level.FINEST)) {
 			LOG.finest(i18n.format("JPASituationStore.DeassSit", situationId)); //$NON-NLS-1$
 		}
-		doInTransaction(new EntityManagerCallback.Void() {
-			@Override
-			public void doExecute(EntityManager entityManager) {
-				Situation situation = entityManager.find(Situation.class, situationId);
+		_jpaStore.withJpa(new JpaWork<Void>() {
+			public Void perform(EntityManager em) {
+				Situation situation = em.find(Situation.class, situationId);
 				java.util.Map<String, String> properties = situation.getProperties();
 				properties.remove(ASSIGNED_TO_PROPERTY);
 				// remove current state if not already resolved
@@ -245,6 +200,7 @@ public class JPASituationStore implements SituationStore {
 				if (resolutionState != null && ResolutionState.RESOLVED != ResolutionState.valueOf(resolutionState)) {
 					properties.remove(RESOLUTION_STATE_PROPERTY);
 				}
+				return null;
 			}
 		});
 	}
@@ -253,40 +209,13 @@ public class JPASituationStore implements SituationStore {
 		if (LOG.isLoggable(Level.FINEST)) {
 			LOG.finest(i18n.format("JPASituationStore.UpdRState", situationId)); //$NON-NLS-1$
 		}
-		doInTransaction(new EntityManagerCallback.Void() {
-			@Override
-			public void doExecute(EntityManager entityManager) {
-				Situation situation = entityManager.find(Situation.class, situationId);
+		_jpaStore.withJpa(new JpaWork<Void>() {
+			public Void perform(EntityManager em) {
+				Situation situation = em.find(Situation.class, situationId);
 				situation.getProperties().put(RESOLUTION_STATE_PROPERTY, resolutionState.name());
+				return null;
 			}
 		});
-	}
-	
-	private <T> T doInTransaction(EntityManagerCallback<T> callback) {
-		EntityManager entityManager = getEntityManager();
-		UserTransaction userTransaction = null;
-		T result = null;
-		try {
-			userTransaction = getTransaction();
-			boolean handleTransaction = userTransaction.getStatus() != Status.STATUS_ACTIVE;
-			if (handleTransaction) {
-				userTransaction.begin();
-				//entityManager.joinTransaction();
-			}
-			result = callback.execute(entityManager);
-			if (handleTransaction) {
-				userTransaction.commit();
-			}
-		} catch (Exception exception) {
-			try {
-				if (userTransaction != null && userTransaction.getStatus() == Status.STATUS_ACTIVE) {
-					userTransaction.rollback();
-				}
-			} catch (Exception rollbackException) {
-				rollbackException.printStackTrace();
-			}
-		}
-		return result;
 	}
 
 	/**
@@ -334,10 +263,9 @@ public class JPASituationStore implements SituationStore {
 		if (LOG.isLoggable(Level.FINEST)) {
 			LOG.finest(i18n.format("JPASituationStore.Resubmit", situationId)); //$NON-NLS-1$
 		}
-		doInTransaction(new EntityManagerCallback.Void() {
-			@Override
-			public void doExecute(EntityManager entityManager) {
-				Situation situation = entityManager.find(Situation.class, situationId);
+		_jpaStore.withJpa(new JpaWork<Void>() {
+			public Void perform(EntityManager em) {
+				Situation situation = em.find(Situation.class, situationId);
 				Map<String, String> properties = situation.getProperties();
 				if (IUserContext.Holder.getUserPrincipal() != null) {
 					properties.put(RESUBMIT_BY_PROPERTY, IUserContext.Holder.getUserPrincipal().getName());
@@ -345,6 +273,7 @@ public class JPASituationStore implements SituationStore {
 				properties.put(RESUBMIT_AT_PROPERTY, Long.toString(currentTimeMillis()));
 				properties.put(RESUBMIT_RESULT_PROPERTY, RESUBMIT_RESULT_SUCCESS);
 				properties.remove(RESUBMIT_ERROR_MESSAGE);
+				return null;
 			}
 		});
 	}
@@ -354,23 +283,22 @@ public class JPASituationStore implements SituationStore {
         if (LOG.isLoggable(Level.FINEST)) {
             LOG.finest(i18n.format("JPASituationStore.ResubmitFailure", situationId)); //$NON-NLS-1$
         }
-        doInTransaction(new EntityManagerCallback.Void() {
-            @Override
-            public void doExecute(EntityManager entityManager) {
-                Situation situation = entityManager.find(Situation.class, situationId);
-                Map<String, String> properties = situation.getProperties();
-                if (IUserContext.Holder.getUserPrincipal() != null) {
-                    properties.put(RESUBMIT_BY_PROPERTY, IUserContext.Holder.getUserPrincipal().getName());
-                }
-                properties.put(RESUBMIT_AT_PROPERTY, Long.toString(currentTimeMillis()));
-                properties.put(RESUBMIT_RESULT_PROPERTY, RESUBMIT_RESULT_ERROR);
-                String message = Strings.nullToEmpty(errorMessage);
-                if (message.length() > PROPERTY_VALUE_MAX_LENGTH) {
-                    message = message.substring(0, PROPERTY_VALUE_MAX_LENGTH);
-                }
-                properties.put(RESUBMIT_ERROR_MESSAGE, message);
-            }
-        });
-
+        _jpaStore.withJpa(new JpaWork<Void>() {
+			public Void perform(EntityManager em) {
+				Situation situation = em.find(Situation.class, situationId);
+				Map<String, String> properties = situation.getProperties();
+		        if (IUserContext.Holder.getUserPrincipal() != null) {
+		            properties.put(RESUBMIT_BY_PROPERTY, IUserContext.Holder.getUserPrincipal().getName());
+		        }
+		        properties.put(RESUBMIT_AT_PROPERTY, Long.toString(currentTimeMillis()));
+		        properties.put(RESUBMIT_RESULT_PROPERTY, RESUBMIT_RESULT_ERROR);
+		        String message = Strings.nullToEmpty(errorMessage);
+		        if (message.length() > PROPERTY_VALUE_MAX_LENGTH) {
+		            message = message.substring(0, PROPERTY_VALUE_MAX_LENGTH);
+		        }
+		        properties.put(RESUBMIT_ERROR_MESSAGE, message);
+				return null;
+			}
+		});
     }
 }

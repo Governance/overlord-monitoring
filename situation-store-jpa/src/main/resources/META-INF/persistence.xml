@@ -5,10 +5,7 @@
             version="2.0">
 	<persistence-unit name="overlord-rtgov-situations" transaction-type="JTA">
 		<provider>org.hibernate.ejb.HibernatePersistence</provider>
-
-		<jta-data-source>java:jboss/datasources/OverlordRTGov</jta-data-source>
-
-		<class>org.overlord.rtgov.activity.model.ActivityUnit</class>
+        <class>org.overlord.rtgov.activity.model.ActivityUnit</class>
 		<class>org.overlord.rtgov.activity.model.ActivityType</class>
 		<class>org.overlord.rtgov.activity.model.ActivityTypeId</class>
 		<class>org.overlord.rtgov.activity.model.Context</class>
@@ -34,9 +31,8 @@
 			<property name="hibernate.transaction.jta.platform" value="org.hibernate.service.jta.platform.internal.JBossAppServerJtaPlatform" />
 		</properties>
 	</persistence-unit>
-	<persistence-unit name="overlord-rtgov-activity" transaction-type="JTA">
+	<!-- <persistence-unit name="overlord-rtgov-activity" transaction-type="JTA">
 		<provider>org.hibernate.ejb.HibernatePersistence</provider>
-		<jta-data-source>java:jboss/datasources/OverlordRTGov</jta-data-source>
 		<class>org.overlord.rtgov.activity.model.ActivityUnit</class>
 		<class>org.overlord.rtgov.activity.model.ActivityType</class>
 		<class>org.overlord.rtgov.activity.model.ActivityTypeId</class>
@@ -59,6 +55,6 @@
 		<properties>
 			<property name="hibernate.transaction.jta.platform" value="org.hibernate.service.jta.platform.internal.JBossAppServerJtaPlatform" />
 		</properties>
-	</persistence-unit>
+	</persistence-unit> -->
 </persistence>
 
